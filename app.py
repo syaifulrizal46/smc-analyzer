@@ -2,39 +2,45 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 
-# Konfigurasi Tampilan Web
-st.set_page_config(page_title="SMC Chart Analyzer", page_icon="📈")
+st.set_page_config(page_title="SMC Chart Analyzer", layout="centered")
+
 st.title("📈 SMC & Price Action Chart Analyzer")
 st.write("Unggah screenshot chart kamu untuk mendapatkan analisis otomatis.")
 
-# Input API Key dari User
-api_key = st.sidebar.text_input("Masukkan Gemini API Key Kamu:", type="password")
+# Sidebar untuk API Key
+st.sidebar.header("Pengaturan")
+api_key = st.sidebar.text_input("Masukkan Gemini API Key:", type="password")
 
-if api_key:
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+# Upload Gambar
+uploaded_file = st.file_uploader("Pilih gambar chart (PNG, JPG, JPEG)...", type=["png", "jpg", "jpeg"])
 
-    # Upload Gambar
-    uploaded_file = st.file_uploader("Pilih gambar chart (PNG, JPG, JPEG)...", type=["jpg", "jpeg", "png"])
-
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Chart yang diunggah", use_column_width=True)
-        
-        if st.button("🔍 Analisis Chart Sekarang"):
-            with st.spinner("AI sedang membedah struktur SMC & Price Action..."):
+if uploaded_file is not None:
+    image = Image.open(uploaded_file)
+    st.image(image, caption="Chart yang diunggah")
+    
+    if st.button("🔍 Analisis Chart Sekarang"):
+        if not api_key:
+            st.error("Silakan masukkan Gemini API Key di sidebar terlebih dahulu!")
+        else:
+            try:
+                genai.configure(api_key=api_key)
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                
                 prompt = """
-                Bertindaklah sebagai pakar analisis teknikal Smart Money Concepts (SMC) dan Price Action. 
-                Analisis gambar chart ini secara ringkas, to the point, dan terstruktur meliputi:
-                1. Tren & Struktur Pasar Utama (BOS, CHoCH/MSS)
-                2. Zona Penting (Order Block/OB, FVG/Imbalance, Liquidity BSL/SSL)
-                3. Trade Setup (Opsi BUY/SELL, perkiraan Entry, SL, dan TP)
-                4. Konfirmasi/Validasi sebelum eksekusi
-                Gunakan format bullet points yang mudah dibaca saat trading.
+                Kamu adalah seorang analis pasar teknikal profesional spesialis Smart Money Concepts (SMC) dan Price Action. 
+                Analisis gambar chart trading ini dan berikan respons terstruktur:
+                1. **Tren Utama & Struktur Pasar:** (Bullish/Bearish/Side, Higher High/Low, Break of Structure).
+                2. **Area Kunci SMC:** (Order Block, Fair Value Gap/FVG, Liquidity Sweep, Support/Resistance).
+                3. **Rekomendasi Rencana Trading:** (Saran Entry, Area Stop Loss, dan Target Take Profit dengan alasannya).
+                4. **Peringatan Risiko:** (Risiko utama atau kondisi konfirmasi yang perlu ditunggu).
+                Gunakan bahasa Indonesia yang jelas, tegas, dan mudah dipahami.
                 """
-                response = model.generate_content([prompt, image])
-                st.markdown("---")
-                st.subheader("📊 Hasil Analisis SMC:")
-                st.write(response.text)
-else:
-    st.warning("Silakan masukkan Gemini API Key kamu di sidebar sebelah kiri untuk memulai.")
+                
+                with st.spinner("Sedang menganalisis chart... Mohon tunggu..."):
+                    response = model.generate_content([prompt, image])
+                    st.success("Analisis Selesai!")
+                    st.markdown("### Hasil Analisis Chart:")
+                    st.write(response.text)
+                    
+            except Exception as e:
+                st.error(f"Terjadi kesalahan: {e}")
